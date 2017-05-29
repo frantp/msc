@@ -32,4 +32,8 @@
 *.app
 
 # Temporal files
+.*
 *~
+
+# Build files
+build/

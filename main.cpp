@@ -34,6 +34,7 @@
 #include "msc.h"
 #include "msc.kernels.h"
 #include "msc.metrics.h"
+#include "msc.estimators.h"
 
 typedef double Scalar;
 
@@ -43,27 +44,37 @@ void dump(const std::vector<std::vector<Scalar>>& points,
 
 int main(int argc, char** argv)
 {
+    const double bandwidth = argc > 1 ? std::stof(argv[1]) : 1;
     std::istream* in = &std::cin;
     std::ifstream infile;
-    #ifdef _WIN32
-    if (_isatty(_fileno(stdin)))
-    #else
-    if (isatty(fileno(stdin)))
-    #endif
+    if (argc > 2)
     {
-        std::cout << "Input CSV file: ";
-        std::string filename;
-        std::cin >> filename;
-        infile.open(filename);
+        infile.open(argv[2]);
         in = &infile;
     }
+    else
+    {
+        #ifdef _WIN32
+        if (_isatty(_fileno(stdin)))
+        #else
+        if (isatty(fileno(stdin)))
+        #endif
+        {
+            std::cout << "Input CSV file: ";
+            std::string filename;
+            std::cin >> filename;
+            infile.open(filename);
+            in = &infile;
+        }
+    }
 
-    const double bandwidth = argc > 1 ? std::stof(argv[1]) : 0.1;
     std::cerr << "Kernel bandwidth: " << bandwidth << std::endl;
     const auto points = load(*in);
     std::cerr << "Num. points: " << points.size() << std::endl;
-    const auto clusters = msc::cluster(points,
-        msc::kernels::GaussianSq(), msc::metrics::L2Sq(), bandwidth);
+    const auto clusters = msc::meanshiftcluster<Scalar>(
+        std::begin(points), std::end(points),
+        msc::kernels::ParabolicSq(), msc::metrics::L2Sq(),
+        msc::estimators::Constant(bandwidth));
     std::cerr << "Clusters (" << clusters.size() << "):" << std::endl;
     for (const auto& cluster : clusters)
     {

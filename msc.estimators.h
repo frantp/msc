@@ -20,62 +20,47 @@
 
 #pragma once
 
-#include <vector>
 #include <cmath>
 
 namespace msc
 {
-namespace metrics
+namespace estimators
 {
-struct L1
+struct Constant
 {
-    template <class T>
-    inline double operator()(const T* a, const T* b, int dim) const
+    inline explicit Constant(double factor) : factor_(1 / factor) {}
+
+    template <class T, class InputIterator, class Metric>
+    inline double operator()(const std::vector<T>& point,
+        InputIterator first, InputIterator last, Metric metric) const
     {
-        double d = 0;
-        for (int i = 0; i < dim; i++)
-            d += a[i] - b[i];
-        return d;
+        return factor_;
     }
+
+private:
+    double factor_;
 };
 
-struct L2
+struct NearestNeighbor
 {
-    template <class T>
-    inline double operator()(const T* a, const T* b, int dim) const
-    {
-        double d = 0;
-        for (int i = 0; i < dim; i++)
-            d += (a[i] - b[i]) * (a[i] - b[i]);
-        return std::sqrt(d);
-    }
-};
+    inline explicit NearestNeighbor(double factor) : factor_(factor) {}
 
-struct L2Sq
-{
-    template <class T>
-    inline double operator()(const T* a, const T* b, int dim) const
+    template <class T, class InputIterator, class Metric>
+    inline double operator()(const std::vector<T>& point,
+        InputIterator first, InputIterator last, Metric metric) const
     {
-        double d = 0;
-        for (int i = 0; i < dim; i++)
-            d += (a[i] - b[i]) * (a[i] - b[i]);
-        return d;
-    }
-};
-
-struct Inf
-{
-    template <class T>
-    inline double operator()(const T* a, const T* b, int dim) const
-    {
-        double d = 0;
-        for (int i = 0; i < dim; i++)
+        double dmin = 0;
+        for (auto it = first; it != last; it++)
         {
-            const auto t = a[i] - b[i];
-            if (d < t) d = t;
+            const auto& pt = *it;
+            const auto d = metric(point.data(), pt.data(), point.size());
+            if (dmin == 0 || (d > 0 && d < dmin)) dmin = d;
         }
-        return d;
+        return 1 / (dmin * factor_);
     }
+
+private:
+    double factor_;
 };
-} // namespace metrics
+} // namespace estimators
 } // namespace msc

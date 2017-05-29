@@ -34,6 +34,84 @@ struct Uniform
     }
 };
 
+struct Triangular
+{
+    inline double operator()(double d) const
+    {
+        return d <= 1 ? 1 - std::abs(d) : 0;
+    }
+};
+
+struct Parabolic
+{
+    inline double operator()(double d) const
+    {
+        return d <= 1 ? 1 - d * d : 0;
+    }
+};
+
+struct ParabolicSq
+{
+    inline double operator()(double d2) const
+    {
+        return d2 <= 1 ? 1 - d2 : 0;
+    }
+};
+
+struct Biweight
+{
+    inline double operator()(double d) const
+    {
+        const auto x = 1 - d * d;
+        return d <= 1 ? x * x : 0;
+    }
+};
+
+struct BiweightSq
+{
+    inline double operator()(double d2) const
+    {
+        const auto x = 1 - d2;
+        return d2 <= 1 ? x * x : 0;
+    }
+};
+
+struct Triweight
+{
+    inline double operator()(double d) const
+    {
+        const auto x = 1 - d * d;
+        return d <= 1 ? x * x * x : 0;
+    }
+};
+
+struct TriweightSq
+{
+    inline double operator()(double d2) const
+    {
+        const auto x = 1 - d2;
+        return d2 <= 1 ? x * x * x : 0;
+    }
+};
+
+struct Tricube
+{
+    inline double operator()(double d) const
+    {
+        const auto x = 1 - d * d * d;
+        return d <= 1 ? x * x * x : 0;
+    }
+};
+
+struct TricubeCu
+{
+    inline double operator()(double d3) const
+    {
+        const auto x = 1 - d3;
+        return d3 <= 1 ? x * x * x : 0;
+    }
+};
+
 struct Gaussian
 {
     inline double operator()(double d) const
@@ -47,6 +125,39 @@ struct GaussianSq
     inline double operator()(double d2) const
     {
         return std::exp(-0.5 * d2);
+    }
+};
+
+struct Cosine
+{
+    inline double operator()(double d) const
+    {
+        return d <= 1 ? std::cos(M_PI_2 * d) : 0;
+    }
+};
+
+struct Logistic
+{
+    inline double operator()(double d) const
+    {
+        return 1.0 / (2 + std::exp(d) + std::exp(-d));
+    }
+};
+
+struct Sigmoid
+{
+    inline double operator()(double d) const
+    {
+        return 1.0 / (std::exp(d) + std::exp(-d));
+    }
+};
+
+struct Silverman
+{
+    inline double operator()(double d) const
+    {
+        const auto x = M_SQRT1_2 * std::abs(d);
+        return std::exp(-x) * std::sin(x + M_PI_4);
     }
 };
 } // namespace kernels
