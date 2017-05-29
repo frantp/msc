@@ -22,7 +22,6 @@
 
 #include <vector>
 #include <limits>
-#include <cmath>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -33,63 +32,30 @@ namespace msc
 template <typename Scalar>
 struct Cluster
 {
-    std::vector<Scalar> center;
+    std::vector<Scalar> mode;
     std::vector<std::size_t> members;
 
-    inline Cluster(const std::vector<Scalar>& center)
-        : center(center), members() {}
+    inline Cluster(const std::vector<Scalar>& mode)
+        : mode(mode), members() {}
 };
-
-namespace kernel
-{
-struct Gaussian
-{
-    inline Gaussian(double bandwidth)
-        : ibw2_(1.0 / (bandwidth * bandwidth)) {}
-
-    inline double operator()(double d) const
-    {
-        return std::exp(-0.5 * d * d * ibw2_);
-    }
-
-private:
-    double ibw2_;
-};
-} // namespace kernel
-
-namespace dist
-{
-struct SqEuclidean
-{
-    template <typename Scalar>
-    inline double operator()(
-        const std::vector<Scalar>& a,
-        const std::vector<Scalar>& b) const
-    {
-        Scalar d = 0;
-        for (int i = 0; i < a.size(); i++)
-            d += (a[i] - b[i]) * (a[i] - b[i]);
-        return d;
-    }
-};
-} // namespace dist
 
 namespace detail
 {
 double EPS = std::numeric_limits<float>::epsilon();
 
-template <typename Scalar, typename Kernel, typename Distance>
+template <typename Scalar, typename Kernel, typename Metric>
 inline std::vector<Scalar> meanshift(const std::vector<Scalar>& point,
     const std::vector<std::vector<Scalar>>& points,
-    Kernel kernel, Distance distance)
+    Kernel kernel, Metric metric, Scalar ibw)
 {
     std::vector<Scalar> shifted(point.size());
     double total_weight = 0;
 
-    #pragma omp parallel for
+    #pragma omp parallel for reduction(+: total_weight)
     for (std::size_t p = 0; p < points.size(); p++)
     {
-        const auto weight = kernel(distance(point, points[p]));
+        const auto dist = metric(point.data(), points[p].data(), point.size());
+        const auto weight = kernel(dist * ibw);
         for (int i = 0; i < shifted.size(); i++)
             shifted[i] += points[p][i] * weight;
         total_weight += weight;
@@ -100,9 +66,9 @@ inline std::vector<Scalar> meanshift(const std::vector<Scalar>& point,
     return shifted;
 }
 
-template <typename Scalar, typename Distance>
+template <typename Scalar, typename Metric>
 inline std::vector<Cluster<Scalar>> cluster(
-    const std::vector<std::vector<Scalar>>& shifted, Distance distance)
+    const std::vector<std::vector<Scalar>>& shifted, Metric metric)
 {
     std::vector<Cluster<Scalar>> clusters;
 
@@ -110,7 +76,8 @@ inline std::vector<Cluster<Scalar>> cluster(
     {
         int c = 0;
         for (; c < clusters.size(); c++)
-            if (distance(shifted[i], clusters[c].center) <= EPS)
+            if (metric(shifted[i].data(), clusters[c].mode.data(),
+                shifted[i].size()) <= EPS)
                 break;
         if (c == clusters.size())
             clusters.emplace_back(shifted[i]);
@@ -121,12 +88,13 @@ inline std::vector<Cluster<Scalar>> cluster(
 }
 } // namespace detail
 
-template <typename Scalar, typename Kernel, typename Distance>
+template <typename Scalar, typename Kernel, typename Metric>
 inline std::vector<std::vector<Scalar>> meanshift(
     const std::vector<std::vector<Scalar>>& points,
-    Kernel kernel, Distance distance)
+    Kernel kernel, Metric metric, Scalar bandwidth)
 {
     std::vector<std::vector<Scalar>> shifted(points);
+    const auto ibw = 1 / bandwidth;
 
     #pragma omp parallel for
     for (std::size_t i = 0; i < shifted.size(); i++)
@@ -135,8 +103,8 @@ inline std::vector<std::vector<Scalar>> meanshift(
         do
         {
             const auto p = detail::meanshift(
-                shifted[i], points, kernel, distance);
-            d = distance(p, shifted[i]);
+                shifted[i], points, kernel, metric, ibw);
+            d = metric(p.data(), shifted[i].data(), p.size());
             shifted[i] = p;
         }
         while (d > detail::EPS);
@@ -145,13 +113,12 @@ inline std::vector<std::vector<Scalar>> meanshift(
     return shifted;
 }
 
-template <typename Scalar, typename Kernel,
-    typename Distance = dist::SqEuclidean>
+template <typename Scalar, typename Kernel, typename Metric>
 inline std::vector<Cluster<Scalar>> cluster(
     const std::vector<std::vector<Scalar>>& points,
-    Kernel kernel, Distance distance = Distance())
+    Kernel kernel, Metric metric, Scalar bandwidth)
 {
-    return detail::cluster(meanshift(points, kernel, distance), distance);
+    return detail::cluster(
+        meanshift(points, kernel, metric, bandwidth), metric);
 }
-
 } // namespace msc

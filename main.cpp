@@ -31,7 +31,9 @@
 #include <unistd.h>
 #endif
 
-#include "meanshift.h"
+#include "msc.h"
+#include "msc.kernels.h"
+#include "msc.metrics.h"
 
 typedef double Scalar;
 
@@ -60,12 +62,13 @@ int main(int argc, char** argv)
     std::cerr << "Kernel bandwidth: " << bandwidth << std::endl;
     const auto points = load(*in);
     std::cerr << "Num. points: " << points.size() << std::endl;
-    const auto clusters = msc::cluster(points, msc::kernel::Gaussian(bandwidth));
-    std::cerr << "Clusters:" << std::endl;
+    const auto clusters = msc::cluster(points,
+        msc::kernels::GaussianSq(), msc::metrics::L2Sq(), bandwidth);
+    std::cerr << "Clusters (" << clusters.size() << "):" << std::endl;
     for (const auto& cluster : clusters)
     {
         std::cerr << " - Num. elems.: " << cluster.members.size() << "; Center:";
-        for (const auto& value : cluster.center)
+        for (const auto& value : cluster.mode)
             std::cerr << ", " << value;
         std::cerr << std::endl;
     }
