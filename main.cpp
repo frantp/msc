@@ -19,16 +19,19 @@
 // SOFTWARE.
 
 #include "msc.h"
+#include "msc.accessors.h"
 #include "msc.metrics.h"
 #include "msc.kernels.h"
 #include "msc.estimators.h"
 
 #include <vector>
+#include <memory>
 #include <string>
 #include <sstream>
 #include <fstream>
 #include <istream>
 #include <iostream>
+#include <chrono>
 
 #ifdef _WIN32
 #include <io.h>
@@ -36,10 +39,29 @@
 #include <unistd.h>
 #endif
 
-typedef double Scalar;
+template <class T, class Alloc = std::allocator<T>>
+struct Point3
+{
+    T x, y, z;
+};
 
-std::vector<std::vector<Scalar>> load(std::istream& in);
-void dump(const std::vector<std::vector<Scalar>>& points,
+namespace msc
+{
+template <class T, class Alloc>
+struct Accessor<T, Point3<T, Alloc>>
+{
+    inline static const T* data(const Point3<T>& container)
+    {
+        return &container.x;
+    }
+};
+} // namespace msc
+
+typedef double Scalar;
+typedef Point3<Scalar> Container;
+
+std::vector<Container> load(std::istream& in);
+void dump(const std::vector<Container>& points,
     const std::vector<msc::Cluster<Scalar>>& clusters);
 
 int main(int argc, char** argv)
@@ -71,11 +93,14 @@ int main(int argc, char** argv)
     std::cerr << "Kernel bandwidth: " << bandwidth << std::endl;
     const auto points = load(*in);
     std::cerr << "Num. points: " << points.size() << std::endl;
+    const auto t0 = std::chrono::high_resolution_clock::now();
     const auto clusters = msc::meanshiftcluster<Scalar>(
-        std::begin(points), std::end(points), points[0].size(),
+        std::begin(points), std::end(points),
+        sizeof(Container) / sizeof(Scalar),
         msc::metrics::L2Sq(),
         msc::kernels::ParabolicSq(),
         msc::estimators::Constant(bandwidth));
+    const auto t1 = std::chrono::high_resolution_clock::now();
     std::cerr << "Clusters (" << clusters.size() << "):" << std::endl;
     for (const auto& cluster : clusters)
     {
@@ -84,13 +109,15 @@ int main(int argc, char** argv)
             std::cerr << " " << value;
         std::cerr << std::endl;
     }
+    std::cerr << "Elapsed time: " << std::chrono::duration_cast<
+        std::chrono::microseconds>(t1 - t0).count() / 1e6 << std::endl;
     dump(points, clusters);
     return 0;
 }
 
-std::vector<std::vector<Scalar>> load(std::istream& in)
+std::vector<Container> load(std::istream& in)
 {
-    std::vector<std::vector<Scalar>> points;
+    std::vector<Container> points;
     std::string line;
     while (std::getline(in, line))
     {
@@ -98,13 +125,17 @@ std::vector<std::vector<Scalar>> load(std::istream& in)
         auto& point = points.back();
         std::istringstream lin(line);
         std::string token;
-        while (std::getline(lin, token, ','))
-            point.push_back(std::stod(token));
+        std::getline(lin, token, ',');
+        point.x = std::stod(token);
+        std::getline(lin, token, ',');
+        point.y = std::stod(token);
+        std::getline(lin, token, ',');
+        point.z = std::stod(token);
     }
     return points;
 }
 
-void dump(const std::vector<std::vector<Scalar>>& points,
+void dump(const std::vector<Container>& points,
     const std::vector<msc::Cluster<Scalar>>& clusters)
 {
     for (std::size_t c = 0; c < clusters.size(); c++)
@@ -113,8 +144,7 @@ void dump(const std::vector<std::vector<Scalar>>& points,
         {
             std::cout << c;
             const auto point = points[index];
-            for (std::size_t i = 0; i < point.size(); i++)
-                std::cout << "," << point[i];
+            std::cout << "," << point.x << "," << point.y << "," << point.z;
             std::cout << std::endl;
         }
     }

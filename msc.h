@@ -22,6 +22,9 @@
 
 #include <vector>
 #include <limits>
+#include <iterator>
+#include <type_traits>
+#include <stdexcept>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -41,19 +44,33 @@ struct Cluster
         : mode(mode, mode + dim), members() {}
 };
 
+template <class T, class C>
+struct Accessor
+{
+    inline static const T* data(const C& container)
+    {
+        static_assert(False<T>::value, "Accessor not implemented for container");
+    }
+
+private:
+    template <typename>
+    struct False : std::false_type {};
+};
+
 template <class T, class ForwardIterator,
           class Metric, class Kernel, class Estimator>
 inline std::vector<T> meanshift(const T* point,
     ForwardIterator first, ForwardIterator last, int dim,
     Metric metric, Kernel kernel, Estimator estimator)
 {
+    typedef typename std::iterator_traits<ForwardIterator>::value_type C;
     std::vector<T> shifted(dim);
     const auto ibw = estimator(point, first, last, dim, metric);
     double total_weight = 0;
 
     for (auto it = first; it != last; it++)
     {
-        const T* pt = &(*it)[0];
+        const T* pt = Accessor<T, C>::data(*it);
         const auto dist = metric(pt, point, dim);
         const auto weight = kernel(dist * ibw);
         for (int k = 0; k < shifted.size(); k++)
@@ -73,13 +90,15 @@ inline std::vector<std::vector<T>> meanshift(
     ForwardIterator first, ForwardIterator last, int dim,
     Metric metric, Kernel kernel, Estimator estimator)
 {
+    typedef typename std::iterator_traits<ForwardIterator>::value_type C;
     std::vector<std::vector<T>> shifted(std::distance(first, last));
     std::size_t i = 0;
     for (auto it = first; it != last; it++, i++)
     {
+        const T* pt = Accessor<T, C>::data(*it);
         shifted[i].resize(dim);
         for (int k = 0; k < dim; k++)
-            shifted[i][k] = (*it)[k];
+            shifted[i][k] = pt[k];
     }
 
     #pragma omp parallel for
@@ -104,11 +123,14 @@ template <class T, class InputIterator, class Metric>
 inline std::vector<Cluster<T>> cluster(
     InputIterator first, InputIterator last, int dim, Metric metric)
 {
+    typedef typename std::iterator_traits<InputIterator>::value_type C;
+    if (dim <= 0)
+        throw std::invalid_argument("Dimension must be greater than 0");
     std::vector<Cluster<T>> clusters;
     std::size_t i = 0;
     for (auto it = first; it != last; it++, i++)
     {
-        const T* pt = &(*it)[0];
+        const T* pt = Accessor<T, C>::data(*it);
         int c = 0;
         for (; c < clusters.size(); c++)
             if (metric(pt, clusters[c].mode.data(), dim) <= EPS)
