@@ -28,7 +28,8 @@ namespace estimators
 {
 struct Constant
 {
-    inline explicit Constant(double factor) : factor_(1 / factor) {}
+    inline explicit Constant(double factor)
+        : factor_(1 / factor) {}
 
     template <class T, class InputIterator, class Metric>
     inline double operator()(const T* point,
@@ -43,7 +44,8 @@ private:
 
 struct MinMaxDistance
 {
-    inline explicit MinMaxDistance(double factor) : factor_(1 / (factor * factor)) {}
+    inline explicit MinMaxDistance(double factor)
+        : factor_(1 / (factor * factor)) {}
 
     template <class T, class InputIterator, class Metric>
     inline double operator()(const T* point,
