@@ -18,6 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include "msc.h"
+#include "msc.metrics.h"
+#include "msc.kernels.h"
+#include "msc.estimators.h"
+
 #include <vector>
 #include <string>
 #include <sstream>
@@ -30,11 +35,6 @@
 #else
 #include <unistd.h>
 #endif
-
-#include "msc.h"
-#include "msc.kernels.h"
-#include "msc.metrics.h"
-#include "msc.estimators.h"
 
 typedef double Scalar;
 
@@ -72,15 +72,16 @@ int main(int argc, char** argv)
     const auto points = load(*in);
     std::cerr << "Num. points: " << points.size() << std::endl;
     const auto clusters = msc::meanshiftcluster<Scalar>(
-        std::begin(points), std::end(points),
-        msc::kernels::ParabolicSq(), msc::metrics::L2Sq(),
+        std::begin(points), std::end(points), points[0].size(),
+        msc::metrics::L2Sq(),
+        msc::kernels::ParabolicSq(),
         msc::estimators::Constant(bandwidth));
     std::cerr << "Clusters (" << clusters.size() << "):" << std::endl;
     for (const auto& cluster : clusters)
     {
-        std::cerr << " - Num. elems.: " << cluster.members.size() << "; Center:";
+        std::cerr << " - Num. elems.: " << cluster.members.size() << "; Mode:";
         for (const auto& value : cluster.mode)
-            std::cerr << ", " << value;
+            std::cerr << " " << value;
         std::cerr << std::endl;
     }
     dump(points, clusters);

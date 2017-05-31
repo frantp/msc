@@ -21,7 +21,6 @@
 #pragma once
 
 #include <vector>
-#include <memory>
 #include <limits>
 
 #ifdef _OPENMP
@@ -32,59 +31,68 @@ namespace msc
 {
 constexpr double EPS = std::numeric_limits<float>::epsilon();
 
-template <class T, class Alloc = std::allocator<T>>
+template <class T>
 struct Cluster
 {
-    std::vector<T, Alloc> mode;
-    std::vector<std::size_t, Alloc> members;
+    std::vector<T> mode;
+    std::vector<std::size_t> members;
 
-    inline Cluster(const std::vector<T>& mode)
-        : mode(mode), members() {}
+    inline Cluster(const T* mode, int dim)
+        : mode(mode, mode + dim), members() {}
 };
 
-template <class T, class InputIterator,
-          class Kernel, class Metric, class Estimator>
-inline std::vector<T> meanshift(const std::vector<T>& point,
-    InputIterator first, InputIterator last,
-    Kernel kernel, Metric metric, Estimator estimator)
+template <class T, class ForwardIterator,
+          class Metric, class Kernel, class Estimator>
+inline std::vector<T> meanshift(const T* point,
+    ForwardIterator first, ForwardIterator last, int dim,
+    Metric metric, Kernel kernel, Estimator estimator)
 {
-    std::vector<T> shifted(point.size());
-    const auto ibw = estimator(point, first, last, metric);
+    std::vector<T> shifted(dim);
+    const auto ibw = estimator(point, first, last, dim, metric);
     double total_weight = 0;
 
     for (auto it = first; it != last; it++)
     {
-        const auto& pt = *it;
-        const auto dist = metric(point.data(), pt.data(), point.size());
+        const T* pt = &(*it)[0];
+        const auto dist = metric(pt, point, dim);
         const auto weight = kernel(dist * ibw);
-        for (int i = 0; i < shifted.size(); i++)
-            shifted[i] += pt[i] * weight;
+        for (int k = 0; k < shifted.size(); k++)
+            shifted[k] += pt[k] * weight;
         total_weight += weight;
     }
 
-    for (int i = 0; i < shifted.size(); i++)
-        shifted[i] /= total_weight;
+    for (int k = 0; k < shifted.size(); k++)
+        shifted[k] /= total_weight;
+
     return shifted;
 }
 
 template <class T, class ForwardIterator,
-          class Kernel, class Metric, class Estimator>
+          class Metric, class Kernel, class Estimator>
 inline std::vector<std::vector<T>> meanshift(
-    ForwardIterator first, ForwardIterator last,
-    Kernel kernel, Metric metric, Estimator estimator)
+    ForwardIterator first, ForwardIterator last, int dim,
+    Metric metric, Kernel kernel, Estimator estimator)
 {
-    std::vector<std::vector<T>> shifted(first, last);
+    std::vector<std::vector<T>> shifted(std::distance(first, last));
+    std::size_t i = 0;
+    for (auto it = first; it != last; it++, i++)
+    {
+        shifted[i].resize(dim);
+        for (int k = 0; k < dim; k++)
+            shifted[i][k] = (*it)[k];
+    }
 
     #pragma omp parallel for
-    for (std::size_t p = 0; p < shifted.size(); p++)
+    for (std::size_t i = 0; i < shifted.size(); i++)
     {
+        const T* pt = shifted[i].data();
         double d = 0;
         do
         {
             const auto point = meanshift(
-                shifted[p], first, last, kernel, metric, estimator);
-            d = metric(point.data(), shifted[p].data(), point.size());
-            shifted[p] = point;
+                pt, first, last, dim, metric, kernel, estimator);
+            d = metric(pt, point.data(), dim);
+            shifted[i] = point;
         }
         while (d > EPS);
     }
@@ -92,35 +100,35 @@ inline std::vector<std::vector<T>> meanshift(
     return shifted;
 }
 
-template <class T, class Alloc = std::allocator<T>, class InputIterator,
-          class Metric>
-inline std::vector<Cluster<T, Alloc>> cluster(
-    InputIterator first, InputIterator last, Metric metric)
+template <class T, class InputIterator, class Metric>
+inline std::vector<Cluster<T>> cluster(
+    InputIterator first, InputIterator last, int dim, Metric metric)
 {
-    std::vector<Cluster<T, Alloc>> clusters;
+    std::vector<Cluster<T>> clusters;
     std::size_t i = 0;
     for (auto it = first; it != last; it++, i++)
     {
-        const auto& pt = *it;
+        const T* pt = &(*it)[0];
         int c = 0;
         for (; c < clusters.size(); c++)
-            if (metric(pt.data(), clusters[c].mode.data(), pt.size()) <= EPS)
+            if (metric(pt, clusters[c].mode.data(), dim) <= EPS)
                 break;
         if (c == clusters.size())
-            clusters.emplace_back(pt);
+            clusters.emplace_back(pt, dim);
         clusters[c].members.emplace_back(i);
     }
 
     return clusters;
 }
 
-template <class T, class Alloc = std::allocator<T>, class ForwardIterator,
-          class Kernel, class Metric, class Estimator>
-inline std::vector<Cluster<T, Alloc>> meanshiftcluster(
-    ForwardIterator first, ForwardIterator last,
-    Kernel kernel, Metric metric, Estimator estimator)
+template <class T, class ForwardIterator,
+          class Metric, class Kernel, class Estimator>
+inline std::vector<Cluster<T>> meanshiftcluster(
+    ForwardIterator first, ForwardIterator last, int dim,
+    Metric metric, Kernel kernel, Estimator estimator)
 {
-    const auto shifted = meanshift<T>(first, last, kernel, metric, estimator);
-    return cluster<T>(std::begin(shifted), std::end(shifted), metric);
+    const auto shifted = meanshift<T>(
+        first, last, dim, metric, kernel, estimator);
+    return cluster<T>(std::begin(shifted), std::end(shifted), dim, metric);
 }
 } // namespace msc

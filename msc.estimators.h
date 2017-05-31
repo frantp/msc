@@ -31,8 +31,8 @@ struct Constant
     inline explicit Constant(double factor) : factor_(1 / factor) {}
 
     template <class T, class InputIterator, class Metric>
-    inline double operator()(const std::vector<T>& point,
-        InputIterator first, InputIterator last, Metric metric) const
+    inline double operator()(const T* point,
+        InputIterator first, InputIterator last, int dim, Metric metric) const
     {
         return factor_;
     }
@@ -41,22 +41,26 @@ private:
     double factor_;
 };
 
-struct NearestNeighbor
+struct MinMaxDistance
 {
-    inline explicit NearestNeighbor(double factor) : factor_(factor) {}
+    inline explicit MinMaxDistance(double factor) : factor_(1 / (factor * factor)) {}
 
     template <class T, class InputIterator, class Metric>
-    inline double operator()(const std::vector<T>& point,
-        InputIterator first, InputIterator last, Metric metric) const
+    inline double operator()(const T* point,
+        InputIterator first, InputIterator last, int dim, Metric metric) const
     {
-        double dmin = 0;
+        double dmin = 0, dmax = 0;
         for (auto it = first; it != last; it++)
         {
-            const auto& pt = *it;
-            const auto d = metric(point.data(), pt.data(), point.size());
-            if (dmin == 0 || (d > 0 && d < dmin)) dmin = d;
+            const auto& pt = &(*it)[0];
+            const auto d = metric(pt, point, dim);
+            if (d > 0)
+            {
+                if (d < dmin || dmin == 0) dmin = d;
+                if (d > dmin) dmax = d;
+            }
         }
-        return 1 / (dmin * factor_);
+        return std::pow(dmax / dmin, factor_) * factor_;
     }
 
 private:
