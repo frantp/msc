@@ -26,29 +26,38 @@
 namespace msc
 {
 template <class T>
+struct Accessor<T, T>
+{
+    inline static const T* data(const T& point)
+    {
+        return &point;
+    }
+};
+
+template <class T>
 struct Accessor<T, T*>
 {
-    inline static const T* data(const T* container)
+    inline static const T* data(const T* point)
     {
-        return container;
+        return point;
     }
 };
 
 template <class T, int N>
 struct Accessor<T, std::array<T, N>>
 {
-    inline static const T* data(const std::array<T, N>& container)
+    inline static const T* data(const std::array<T, N>& point)
     {
-        return container.data();
+        return point.data();
     }
 };
 
 template <class T, class Alloc>
 struct Accessor<T, std::vector<T, Alloc>>
 {
-    inline static const T* data(const std::vector<T, Alloc>& container)
+    inline static const T* data(const std::vector<T, Alloc>& point)
     {
-        return container.data();
+        return point.data();
     }
 };
 } // namespace msc

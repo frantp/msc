@@ -32,8 +32,6 @@
 
 namespace msc
 {
-constexpr double EPS = std::numeric_limits<float>::epsilon();
-
 template <class T>
 struct Cluster
 {
@@ -47,13 +45,13 @@ struct Cluster
 template <class T, class C>
 struct Accessor
 {
-    inline static const T* data(const C& container)
+    inline static const T* data(const C& point)
     {
         static_assert(False<T>::value, "Accessor not implemented for container");
     }
 
 private:
-    template <typename>
+    template <class>
     struct False : std::false_type {};
 };
 
@@ -63,6 +61,8 @@ inline std::vector<T> meanshift(const T* point,
     ForwardIterator first, ForwardIterator last, int dim,
     Metric metric, Kernel kernel, Estimator estimator)
 {
+    if (dim <= 0)
+        throw std::invalid_argument("Dimension must be greater than 0");
     typedef typename std::iterator_traits<ForwardIterator>::value_type C;
     std::vector<T> shifted(dim);
     const auto ibw = estimator(point, first, last, dim, metric);
@@ -88,8 +88,12 @@ template <class T, class ForwardIterator,
           class Metric, class Kernel, class Estimator>
 inline std::vector<std::vector<T>> meanshift(
     ForwardIterator first, ForwardIterator last, int dim,
-    Metric metric, Kernel kernel, Estimator estimator)
+    Metric metric, Kernel kernel, Estimator estimator,
+    double epsilon = std::numeric_limits<float>::epsilon(),
+    int max_iter = std::numeric_limits<int>::max())
 {
+    if (dim <= 0)
+        throw std::invalid_argument("Dimension must be greater than 0");
     typedef typename std::iterator_traits<ForwardIterator>::value_type C;
     std::vector<std::vector<T>> shifted(std::distance(first, last));
     std::size_t i = 0;
@@ -105,6 +109,7 @@ inline std::vector<std::vector<T>> meanshift(
     for (std::size_t i = 0; i < shifted.size(); i++)
     {
         const T* pt = shifted[i].data();
+        int iter = 0;
         double d = 0;
         do
         {
@@ -112,8 +117,9 @@ inline std::vector<std::vector<T>> meanshift(
                 pt, first, last, dim, metric, kernel, estimator);
             d = metric(pt, point.data(), dim);
             shifted[i] = point;
+            iter++;
         }
-        while (d > EPS);
+        while (d > epsilon && iter < max_iter);
     }
 
     return shifted;
@@ -121,11 +127,12 @@ inline std::vector<std::vector<T>> meanshift(
 
 template <class T, class InputIterator, class Metric>
 inline std::vector<Cluster<T>> cluster(
-    InputIterator first, InputIterator last, int dim, Metric metric)
+    InputIterator first, InputIterator last, int dim, Metric metric,
+    double epsilon = std::numeric_limits<float>::epsilon())
 {
-    typedef typename std::iterator_traits<InputIterator>::value_type C;
     if (dim <= 0)
         throw std::invalid_argument("Dimension must be greater than 0");
+    typedef typename std::iterator_traits<InputIterator>::value_type C;
     std::vector<Cluster<T>> clusters;
     std::size_t i = 0;
     for (auto it = first; it != last; it++, i++)
@@ -133,7 +140,7 @@ inline std::vector<Cluster<T>> cluster(
         const T* pt = Accessor<T, C>::data(*it);
         int c = 0;
         for (; c < clusters.size(); c++)
-            if (metric(pt, clusters[c].mode.data(), dim) <= EPS)
+            if (metric(pt, clusters[c].mode.data(), dim) <= epsilon)
                 break;
         if (c == clusters.size())
             clusters.emplace_back(pt, dim);
@@ -147,10 +154,13 @@ template <class T, class ForwardIterator,
           class Metric, class Kernel, class Estimator>
 inline std::vector<Cluster<T>> meanshiftcluster(
     ForwardIterator first, ForwardIterator last, int dim,
-    Metric metric, Kernel kernel, Estimator estimator)
+    Metric metric, Kernel kernel, Estimator estimator,
+    double epsilon = std::numeric_limits<float>::epsilon(),
+    int max_iter = std::numeric_limits<int>::max())
 {
     const auto shifted = meanshift<T>(
-        first, last, dim, metric, kernel, estimator);
-    return cluster<T>(std::begin(shifted), std::end(shifted), dim, metric);
+        first, last, dim, metric, kernel, estimator, epsilon, max_iter);
+    return cluster<T>(
+        std::begin(shifted), std::end(shifted), dim, metric, epsilon);
 }
 } // namespace msc
