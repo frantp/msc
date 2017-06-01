@@ -57,7 +57,7 @@ private:
 
 template <class T, class ForwardIterator,
           class Metric, class Kernel, class Estimator>
-inline std::vector<T> meanshift(const T* point,
+inline std::vector<T> mean_shift(const T* point,
     ForwardIterator first, ForwardIterator last, int dim,
     Metric metric, Kernel kernel, Estimator estimator)
 {
@@ -86,7 +86,7 @@ inline std::vector<T> meanshift(const T* point,
 
 template <class T, class ForwardIterator,
           class Metric, class Kernel, class Estimator>
-inline std::vector<std::vector<T>> meanshift(
+inline std::vector<std::vector<T>> mean_shift(
     ForwardIterator first, ForwardIterator last, int dim,
     Metric metric, Kernel kernel, Estimator estimator,
     double epsilon = std::numeric_limits<float>::epsilon(),
@@ -113,7 +113,7 @@ inline std::vector<std::vector<T>> meanshift(
         double d = 0;
         do
         {
-            const auto point = meanshift(
+            const auto point = mean_shift(
                 pt, first, last, dim, metric, kernel, estimator);
             d = metric(pt, point.data(), dim);
             shifted[i] = point;
@@ -126,7 +126,7 @@ inline std::vector<std::vector<T>> meanshift(
 }
 
 template <class T, class InputIterator, class Metric>
-inline std::vector<Cluster<T>> cluster(
+inline std::vector<Cluster<T>> cluster_shifted(
     InputIterator first, InputIterator last, int dim, Metric metric,
     double epsilon = std::numeric_limits<float>::epsilon())
 {
@@ -152,15 +152,15 @@ inline std::vector<Cluster<T>> cluster(
 
 template <class T, class ForwardIterator,
           class Metric, class Kernel, class Estimator>
-inline std::vector<Cluster<T>> meanshiftcluster(
+inline std::vector<Cluster<T>> mean_shift_cluster(
     ForwardIterator first, ForwardIterator last, int dim,
     Metric metric, Kernel kernel, Estimator estimator,
     double epsilon = std::numeric_limits<float>::epsilon(),
     int max_iter = std::numeric_limits<int>::max())
 {
-    const auto shifted = meanshift<T>(
+    const auto shifted = mean_shift<T>(
         first, last, dim, metric, kernel, estimator, epsilon, max_iter);
-    return cluster<T>(
+    return cluster_shifted<T>(
         std::begin(shifted), std::end(shifted), dim, metric, epsilon);
 }
 } // namespace msc

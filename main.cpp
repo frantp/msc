@@ -78,7 +78,7 @@ int main(int argc, char** argv)
     if (points.empty())
         return 0;
     const auto t0 = std::chrono::high_resolution_clock::now();
-    const auto clusters = msc::meanshiftcluster<Scalar>(
+    const auto clusters = msc::mean_shift_cluster<Scalar>(
         std::begin(points), std::end(points), points[0].size(),
         msc::metrics::L2Sq(),
         msc::kernels::ParabolicSq(),

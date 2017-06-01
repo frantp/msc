@@ -11,11 +11,11 @@ A simple C++ implementation of the mean shift clustering algorithm with the foll
 
 ## Basic usage
 
-The most important function is `meanshiftcluster`. The following is a simple example illustrating its usage:
+The most important function is `mean_shift_cluster`. The following is a simple example illustrating its usage:
 
 ```cpp
 List<Point<Scalar>> points = get_points();
-std::vector<msc::Cluster<Scalar>> clusters = msc::meanshiftcluster<Scalar>(
+std::vector<msc::Cluster<Scalar>> clusters = msc::mean_shift_cluster<Scalar>(
     std::begin(points), std::end(points), 3, metric, kernel, estimator);
 ```
 
