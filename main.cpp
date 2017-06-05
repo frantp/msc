@@ -18,11 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "msc.h"
-#include "msc.accessors.h"
-#include "msc.metrics.h"
-#include "msc.kernels.h"
-#include "msc.estimators.h"
+#include "msc"
 
 #include <vector>
 #include <memory>

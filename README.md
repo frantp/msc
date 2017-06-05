@@ -39,6 +39,8 @@ struct Accessor<Scalar, Point>
 
 Specializations for common types are included in `msc.accessors.h`, so that things like raw arrays, `std::array`s and `std::vector`s work just by including this header (Note: it must be included after the main `msc.h` header for the compiler to know about the base template beforehand).
 
+A helper header `msc` can be used to include all these headers in a single line.
+
 ## Tests and examples
 
 A generic calculator is included in the file `main.cpp` that reads points from a file or the standard input and dumps the clustered points to the standard output. Some tests are included in the following files:
