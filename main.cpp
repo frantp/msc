@@ -38,7 +38,7 @@
 typedef double Scalar;
 typedef std::vector<Scalar> Container;
 
-std::vector<Container> load(std::istream& in);
+std::vector<Container> load(std::istream& in, int col_offset = 0);
 void dump(const std::vector<Container>& points,
     const std::vector<msc::Cluster<Scalar>>& clusters);
 
@@ -67,9 +67,10 @@ int main(int argc, char** argv)
             in = &infile;
         }
     }
+    const int col_offset = argc > 3 ? std::stoi(argv[3]) : 0;
 
     std::cerr << "Kernel bandwidth: " << bandwidth << std::endl;
-    const auto points = load(*in);
+    const auto points = load(*in, col_offset);
     std::cerr << "Num. points: " << points.size() << std::endl;
     if (points.empty())
         return 0;
@@ -89,22 +90,26 @@ int main(int argc, char** argv)
         std::cerr << std::endl;
     }
     std::cerr << "Elapsed time: " << std::chrono::duration_cast<
-        std::chrono::microseconds>(t1 - t0).count() / 1e6 << std::endl;
+        std::chrono::microseconds>(t1 - t0).count() / 1e6 << " s" << std::endl;
     dump(points, clusters);
     return 0;
 }
 
-std::vector<Container> load(std::istream& in)
+std::vector<Container> load(std::istream& in, int col_offset)
 {
     std::vector<Container> points;
     std::string line;
     while (std::getline(in, line))
     {
+        if (line[0] == '%')
+            continue;
         points.emplace_back();
         auto& point = points.back();
         std::istringstream lin(line);
         std::string token;
-        while (std::getline(lin, token, ' '))
+        for (int i = 0; i < col_offset; i++)
+            lin >> token;
+        while (lin >> token)
             point.push_back(std::stod(token));
     }
     return points;

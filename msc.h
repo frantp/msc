@@ -64,6 +64,7 @@ inline std::vector<T> mean_shift(const T* point,
     if (dim <= 0)
         throw std::invalid_argument("Dimension must be greater than 0");
     typedef typename std::iterator_traits<ForwardIterator>::value_type C;
+
     std::vector<T> shifted(dim);
     const auto ibw = estimator(point, first, last, dim, metric);
     double total_weight = 0;

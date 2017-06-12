@@ -81,7 +81,7 @@ std::vector<Container> load(std::istream& in)
     {
         std::istringstream lin(line);
         std::string token;
-        std::getline(lin, token, ' ');
+        lin >> token;
         points.push_back(std::stod(token));
     }
     return points;

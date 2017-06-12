@@ -101,11 +101,11 @@ std::vector<Container> load(std::istream& in)
         auto& point = points.back();
         std::istringstream lin(line);
         std::string token;
-        std::getline(lin, token, ' ');
+        lin >> token;
         point.x = std::stod(token);
-        std::getline(lin, token, ' ');
+        lin >> token;
         point.y = std::stod(token);
-        std::getline(lin, token, ' ');
+        lin >> token;
         point.z = std::stod(token);
     }
     return points;
