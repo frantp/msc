@@ -74,12 +74,12 @@ inline std::vector<T> mean_shift(const T* point,
         const T* pt = Accessor<T, C>::data(*it);
         const auto dist = metric(pt, point, dim);
         const auto weight = kernel(dist * ibw);
-        for (int k = 0; k < shifted.size(); k++)
+        for (std::size_t k = 0; k < shifted.size(); k++)
             shifted[k] += pt[k] * weight;
         total_weight += weight;
     }
 
-    for (int k = 0; k < shifted.size(); k++)
+    for (std::size_t k = 0; k < shifted.size(); k++)
         shifted[k] /= total_weight;
 
     return shifted;
@@ -139,7 +139,7 @@ inline std::vector<Cluster<T>> cluster_shifted(
     for (auto it = first; it != last; it++, i++)
     {
         const T* pt = Accessor<T, C>::data(*it);
-        int c = 0;
+        std::size_t c = 0;
         for (; c < clusters.size(); c++)
             if (metric(pt, clusters[c].mode.data(), dim) <= epsilon)
                 break;
