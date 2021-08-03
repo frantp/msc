@@ -59,7 +59,7 @@ struct MinMaxDistance
             if (d > 0)
             {
                 if (d < dmin || dmin == 0) dmin = d;
-                if (d > dmin) dmax = d;
+                if (d > dmax) dmax = d;
             }
         }
         return std::pow(dmax / dmin, factor_) * factor_;
